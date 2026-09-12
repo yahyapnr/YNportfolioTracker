@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledger — Portfolio Tracker</title>
+<style>
+  :root{
+    --bg: #10241c;
+    --bg-deep: #0a1a14;
+    --surface: #17332740;
+    --surface-solid: #16302511;
+    --card: #1c3a2c;
+    --card-border: #2c503d;
+    --ivory: #f1ecdd;
+    --ivory-dim: #cdc6ae;
+    --ivory-faint: #8f9a8e;
+    --gold: #cc9a3d;
+    --gold-bright: #e0b559;
+    --rust: #c5654a;
+    --rule: #2c503d;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #1a3a2b 0%, transparent 60%),
+      var(--bg-deep);
+    color:var(--ivory);
+    font-family:var(--sans);
+    min-height:100vh;
+    padding:28px 16px 80px;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+
+  /* Header */
+  .masthead{
+    text-align:center;
+    padding-bottom:18px;
+    border-bottom:1px solid var(--rule);
+    margin-bottom:26px;
+  }
+  .masthead .kicker{
+    font-size:12.5px;
+    letter-spacing:0.02em;
+    color:var(--ivory-faint);
+    margin-bottom:6px;
+  }
+  .masthead h1{
+    font-family:var(--serif);
+    font-weight:500;
+    font-size:26px;
+    margin:0;
+    color:var(--ivory);
+  }
+  .masthead .date{
+    font-size:12.5px;
+    color:var(--ivory-faint);
+    margin-top:6px;
+  }
+
+  /* Hero */
+  .hero{
+    text-align:center;
+    padding:14px 0 22px;
+  }
+  .hero .earned-label{
+    font-size:13px;
+    color:var(--ivory-dim);
+    margin-bottom:4px;
+  }
+  .hero .earned{
+    font-family:var(--serif);
+    font-size:56px;
+    line-height:1.05;
+    letter-spacing:-0.01em;
+    color:var(--gold-bright);
+    font-weight:500;
+  }
+  .hero .earned.negative{ color: var(--rust); }
+  .hero .invested{
+    font-size:16px;
+    color:var(--ivory-dim);
+    margin-top:10px;
+  }
+  .hero .invested b{ color:var(--ivory); font-weight:600; }
+  .hero .months{
+    font-size:12.5px;
+    color:var(--ivory-faint);
+    margin-top:4px;
+  }
+
+  /* Stat strip */
+  .stat-strip{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    border-top:1px solid var(--rule);
+    border-bottom:1px solid var(--rule);
+    margin-bottom:28px;
+  }
+  .stat-strip div{
+    padding:14px 8px;
+    text-align:center;
+    border-left:1px solid var(--rule);
+  }
+  .stat-strip div:first-child{border-left:none;}
+  .stat-strip .val{
+    font-family:var(--serif);
+    font-size:19px;
+    color:var(--ivory);
+  }
+  .stat-strip .val.pos{color:var(--gold-bright);}
+  .stat-strip .val.neg{color:var(--rust);}
+  .stat-strip .lbl{
+    font-size:11.5px;
+    color:var(--ivory-faint);
+    margin-top:3px;
+  }
+
+  /* Section label */
+  .section-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:12px;
+  }
+  .section-head h2{
+    font-family:var(--serif);
+    font-weight:500;
+    font-size:17px;
+    margin:0;
+    color:var(--ivory);
+  }
+  .add-btn{
+    background:none;
+    border:1px solid var(--gold);
+    color:var(--gold-bright);
+    font-size:13px;
+    padding:6px 14px;
+    border-radius:3px;
+    cursor:pointer;
+    font-family:var(--sans);
+  }
+  .add-btn:hover{ background:#cc9a3d1a; }
+
+  /* Investment boxes */
+  .holdings{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-bottom:30px;
+  }
+  .holding{
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:4px;
+    padding:16px 18px;
+    position:relative;
+  }
+  .holding-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:10px;
+  }
+  .holding-name{
+    font-size:15.5px;
+    font-weight:600;
+    color:var(--ivory);
+  }
+  .holding-meta{
+    font-size:11.5px;
+    color:var(--ivory-faint);
+    margin-top:2px;
+  }
+  .holding-value{
+    text-align:right;
+  }
+  .holding-value .cv{
+    font-family:var(--serif);
+    font-size:19px;
+    color:var(--ivory);
+  }
+  .holding-value .inv{
+    font-size:11px;
+    color:var(--ivory-faint);
+  }
+  .holding-rows{
+    display:flex;
+    gap:18px;
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px solid var(--card-border);
+  }
+  .holding-rows .cell .n{
+    font-size:14.5px;
+    font-weight:600;
+  }
+  .holding-rows .cell .n.pos{color:var(--gold-bright);}
+  .holding-rows .cell .n.neg{color:var(--rust);}
+  .holding-rows .cell .l{
+    font-size:11px;
+    color:var(--ivory-faint);
+    margin-top:2px;
+  }
+  .holding-actions{
+    display:flex;
+    gap:10px;
+    margin-top:14px;
+  }
+  .log-btn{
+    flex:1;
+    background:var(--gold);
+    border:none;
+    color:#1a1206;
+    font-size:14px;
+    font-weight:700;
+    padding:12px 14px;
+    border-radius:5px;
+    cursor:pointer;
+    font-family:var(--sans);
+  }
+  .log-btn:hover{ background:var(--gold-bright); }
+  .log-btn:active{ transform:scale(0.98); }
+  .mini-btn{
+    background:none;
+    border:1px solid var(--rule);
+    color:var(--ivory-dim);
+    font-size:12px;
+    padding:5px 10px;
+    border-radius:3px;
+    cursor:pointer;
+    font-family:var(--sans);
+  }
+  .mini-btn:hover{ border-color:var(--gold); color:var(--gold-bright); }
+  .mini-btn.danger:hover{ border-color:var(--rust); color:var(--rust); }
+
+  .empty{
+    text-align:center;
+    padding:36px 20px;
+    color:var(--ivory-faint);
+    font-size:14px;
+    border:1px dashed var(--rule);
+    border-radius:4px;
+  }
+
+  /* Modal */
+  .overlay{
+    position:fixed; inset:0;
+    background:#0a1a14cc;
+    display:none;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:50;
+  }
+  .overlay.open{ display:flex; }
+  .modal{
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:10px 10px 0 0;
+    width:100%;
+    max-width:460px;
+    padding:22px 20px 26px;
+  }
+  @media (min-width:520px){
+    .overlay{align-items:center;}
+    .modal{border-radius:8px; margin-bottom:0;}
+  }
+  .modal h3{
+    font-family:var(--serif);
+    font-weight:500;
+    font-size:18px;
+    margin:0 0 16px;
+    color:var(--ivory);
+  }
+  .field{ margin-bottom:14px; }
+  .field label{
+    display:block;
+    font-size:12px;
+    color:var(--ivory-faint);
+    margin-bottom:5px;
+  }
+  .field input{
+    width:100%;
+    background:var(--bg-deep);
+    border:1px solid var(--rule);
+    color:var(--ivory);
+    padding:10px 11px;
+    border-radius:4px;
+    font-size:15px;
+    font-family:var(--sans);
+  }
+  .field input:focus{ outline:none; border-color:var(--gold); }
+  .field select{
+    width:100%;
+    background:var(--bg-deep);
+    border:1px solid var(--rule);
+    color:var(--ivory);
+    padding:10px 11px;
+    border-radius:4px;
+    font-size:15px;
+    font-family:var(--sans);
+  }
+  .field select:focus{ outline:none; border-color:var(--gold); }
+  .modal-actions{
+    display:flex;
+    gap:10px;
+    margin-top:18px;
+  }
+  .btn-primary, .btn-secondary{
+    flex:1;
+    padding:11px;
+    border-radius:4px;
+    font-size:14px;
+    cursor:pointer;
+    font-family:var(--sans);
+  }
+  .btn-primary{
+    background:var(--gold);
+    border:none;
+    color:#1a1206;
+    font-weight:600;
+  }
+  .btn-secondary{
+    background:none;
+    border:1px solid var(--rule);
+    color:var(--ivory-dim);
+  }
+  .hint{ font-size:11px; color:var(--ivory-faint); margin-top:-8px; margin-bottom:14px; }
+
+  .payment-list{
+    margin-top:4px;
+    margin-bottom:6px;
+  }
+  .payment-list .prow{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:8px 0;
+    border-bottom:1px solid var(--rule);
+    font-size:13.5px;
+  }
+  .payment-list .prow .pval{ color:var(--ivory); }
+  .payment-list .prow .pdel{
+    background:none;
+    border:none;
+    color:var(--ivory-faint);
+    font-size:12px;
+    cursor:pointer;
+  }
+  .payment-list .prow .pdel:hover{ color:var(--rust); }
+  .payment-total{
+    display:flex;
+    justify-content:space-between;
+    padding-top:10px;
+    font-size:14px;
+    font-weight:600;
+    color:var(--gold-bright);
+  }
+  .footer-note{
+    text-align:center;
+    font-size:11.5px;
+    color:var(--ivory-faint);
+    margin-top:30px;
+  }
+  .sync-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    margin-top:14px;
+    flex-wrap:wrap;
+  }
+  .sync-btn{
+    background:none;
+    border:1px solid var(--gold);
+    color:var(--gold-bright);
+    font-size:12.5px;
+    font-weight:600;
+    padding:7px 14px;
+    border-radius:20px;
+    cursor:pointer;
+    font-family:var(--sans);
+  }
+  .sync-btn:hover{ background:rgba(212,175,55,0.1); }
+  .sync-btn.connected{
+    border-color:var(--rule);
+    color:var(--ivory-dim);
+  }
+  .sync-status{
+    font-size:11.5px;
+    color:var(--ivory-faint);
+    font-family:var(--sans);
+  }
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <div class="kicker">Personal Ledger</div>
+    <h1>Portfolio Tracker</h1>
+    <div class="date" id="todayLabel"></div>
+    <div class="sync-row" id="syncRow">
+      <button class="sync-btn" id="syncBtn" onclick="handleSyncClick()">Connect Google Drive</button>
+      <span class="sync-status" id="syncStatus"></span>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="earned-label">Total earned</div>
+    <div class="earned" id="heroEarned">$0</div>
+    <div class="invested">Total invested <b id="heroInvested">$0</b></div>
+    <div class="months" id="heroMonths">0 months tracked</div>
+  </div>
+
+  <div class="stat-strip">
+    <div>
+      <div class="val" id="statThisMonth">$0</div>
+      <div class="lbl">This month</div>
+    </div>
+    <div>
+      <div class="val" id="statTotalReturn">0%</div>
+      <div class="lbl">Total return</div>
+    </div>
+    <div>
+      <div class="val" id="statMonths">0</div>
+      <div class="lbl">Months tracked</div>
+    </div>
+  </div>
+
+  <div class="section-head">
+    <h2>Investments</h2>
+    <button class="add-btn" onclick="openAddModal()">+ Add investment</button>
+  </div>
+
+  <div class="holdings" id="holdingsList"></div>
+
+  <div class="footer-note">Values are stored on this device for your account only.</div>
+</div>
+
+<!-- Add investment modal -->
+<div class="overlay" id="addOverlay">
+  <div class="modal">
+    <h3>Add an investment</h3>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="newName" placeholder="e.g. Nifty Index Fund">
+    </div>
+    <div class="field">
+      <label>Amount invested</label>
+      <input type="number" id="newInvested" placeholder="0" inputmode="decimal">
+    </div>
+    <div class="field">
+      <label>Return received this month (optional)</label>
+      <input type="number" id="newValue" placeholder="0" inputmode="decimal">
+    </div>
+    <div class="hint">Leave blank if you haven't received a return yet — you can log it later.</div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('addOverlay')">Cancel</button>
+      <button class="btn-primary" onclick="submitAdd()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Log month modal -->
+<div class="overlay" id="logOverlay">
+  <div class="modal">
+    <h3 id="logTitle">Add a return</h3>
+    <div class="field">
+      <label>Month</label>
+      <select id="logMonth" onchange="renderPaymentList()"></select>
+    </div>
+    <div class="field">
+      <label>Amount received</label>
+      <input type="number" id="logValue" placeholder="0" inputmode="decimal">
+    </div>
+    <div class="hint" id="logHint">Got paid more than once in a month? Add each payment separately — they'll add up. You can also pick an earlier month to add a payment you missed.</div>
+    <div class="payment-list" id="paymentList"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('logOverlay')">Close</button>
+      <button class="btn-primary" onclick="submitLog()">Add payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- Top up invested amount modal -->
+<div class="overlay" id="topUpOverlay">
+  <div class="modal">
+    <h3 id="topUpTitle">Add more to invested amount</h3>
+    <div class="field">
+      <label>Additional amount invested</label>
+      <input type="number" id="topUpValue" placeholder="0" inputmode="decimal">
+    </div>
+    <div class="hint">This adds on top of the amount already invested — it won't replace it.</div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('topUpOverlay')">Cancel</button>
+      <button class="btn-primary" onclick="submitTopUp()">Add to invested</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let investments = [];
+let logTargetId = null;
+
+const fmt = (n) => {
+  const sign = n < 0 ? "-" : "";
+  const abs = Math.abs(n);
+  return sign + "$" + abs.toLocaleString(undefined, {maximumFractionDigits: 0});
+};
+const monthKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+const monthLabel = (key) => {
+  const [y,m] = key.split("-").map(Number);
+  return new Date(y, m-1, 1).toLocaleDateString(undefined, {month:"short", year:"numeric"});
+};
+
+function monthTotal(entry){
+  if(!entry || !Array.isArray(entry.payments)) return 0;
+  return entry.payments.reduce((s,p)=>s+(Number(p.amount)||0),0);
+}
+function totalEarnedFor(inv){
+  return inv.entries.reduce((s,e)=>s+monthTotal(e),0);
+}
+function thisMonthReturnFor(inv){
+  const mKey = monthKey(new Date());
+  const e = inv.entries.find(x=>x.month===mKey);
+  return e ? monthTotal(e) : 0;
+}
+function lastLoggedEntry(inv){
+  return inv.entries.length ? inv.entries[inv.entries.length-1] : null;
+}
+function getOrCreateMonthEntry(inv, mKey){
+  let e = inv.entries.find(x=>x.month===mKey);
+  if(!e){
+    e = {month: mKey, payments: []};
+    inv.entries.push(e);
+  }
+  return e;
+}
+function distinctMonths(){
+  const s = new Set();
+  investments.forEach(inv => inv.entries.forEach(e => s.add(e.month)));
+  return s.size;
+}
+
+function migrateEntry(e){
+  // Older versions stored a single number per month under different keys.
+  // Normalize any of those shapes into the current { month, payments: [...] } form.
+  if(Array.isArray(e.payments)) return e;
+  if(typeof e.returnAmount === "number") return {month: e.month, payments: [{amount: e.returnAmount}]};
+  if(typeof e.value === "number") return {month: e.month, payments: [{amount: e.value}]};
+  return {month: e.month, payments: []};
+}
+function loadData(){
+  try{
+    const raw = localStorage.getItem("investments");
+    const parsed = raw ? JSON.parse(raw) : [];
+    investments = parsed.map(inv => ({
+      ...inv,
+      entries: Array.isArray(inv.entries) ? inv.entries.map(migrateEntry) : []
+    }));
+  }catch(e){
+    console.error("Could not load saved data:", e);
+    investments = [];
+  }
+  render();
+}
+function saveData(){
+  try{
+    localStorage.setItem("investments", JSON.stringify(investments));
+  }catch(e){
+    console.error("Could not save:", e);
+    alert("Could not save to this device. Your browser storage may be full or disabled for this page.");
+  }
+  scheduleDriveSync();
+}
+
+/* ---------------- Google Drive sync ----------------
+   Uses Drive's hidden "appDataFolder" space: a private storage
+   area tied to this app and your Google account, invisible in
+   your normal Drive file list. We store one file there,
+   "portfolio-data.json", holding your investments.
+   NOTE: GOOGLE_CLIENT_ID must be filled in with a real OAuth
+   Client ID (from Google Cloud Console) before this works.
+------------------------------------------------------ */
+const GOOGLE_CLIENT_ID = "282602858326-oi5q39n69fkgchh28amkiub3jsco05oi.apps.googleusercontent.com";
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.appdata";
+const DRIVE_FILE_NAME = "portfolio-data.json";
+
+let driveAccessToken = null;
+let driveFileId = null;
+let tokenClient = null;
+let driveSyncTimer = null;
+let driveSyncing = false;
+
+function setSyncStatus(text){
+  const el = document.getElementById("syncStatus");
+  if(el) el.textContent = text;
+}
+
+function isDriveConfigured(){
+  return GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.startsWith("YOUR_");
+}
+
+function initGoogleAuth(){
+  if(!isDriveConfigured()) return;
+  if(typeof google === "undefined" || !google.accounts) return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: (resp) => {
+      if(resp.error){
+        setSyncStatus("Could not connect to Google Drive.");
+        return;
+      }
+      driveAccessToken = resp.access_token;
+      localStorage.setItem("driveConnected", "1");
+      updateSyncButton(true);
+      setSyncStatus("Connected. Syncing...");
+      driveLoadThenMerge();
+    }
+  });
+
+  // If we connected before, try to silently reconnect
+  if(localStorage.getItem("driveConnected") === "1"){
+    updateSyncButton(true);
+  }
+}
+
+function updateSyncButton(connected){
+  const btn = document.getElementById("syncBtn");
+  if(!btn) return;
+  if(connected){
+    btn.textContent = "Google Drive connected";
+    btn.classList.add("connected");
+  }else{
+    btn.textContent = "Connect Google Drive";
+    btn.classList.remove("connected");
+  }
+}
+
+function handleSyncClick(){
+  if(!isDriveConfigured()){
+    alert("Google Drive sync isn't set up yet on this copy of the app.");
+    return;
+  }
+  if(!tokenClient){
+    setSyncStatus("Still loading Google sign-in, try again in a moment.");
+    return;
+  }
+  tokenClient.requestAccessToken({prompt: driveAccessToken ? "" : "consent"});
+}
+
+async function driveFindFileId(){
+  const res = await fetch(
+    "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name)",
+    { headers: { Authorization: "Bearer " + driveAccessToken } }
+  );
+  if(!res.ok) throw new Error("Drive list failed: " + res.status);
+  const data = await res.json();
+  const match = (data.files || []).find(f => f.name === DRIVE_FILE_NAME);
+  return match ? match.id : null;
+}
+
+async function driveLoadThenMerge(){
+  try{
+    driveFileId = await driveFindFileId();
+    if(!driveFileId){
+      // Nothing in Drive yet — push what we have locally.
+      await driveSaveNow();
+      setSyncStatus("Synced.");
+      return;
+    }
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,
+      { headers: { Authorization: "Bearer " + driveAccessToken } }
+    );
+    if(!res.ok) throw new Error("Drive download failed: " + res.status);
+    const remote = await res.json();
+    if(Array.isArray(remote) && remote.length > 0 && investments.length === 0){
+      investments = remote.map(inv => ({
+        ...inv,
+        entries: Array.isArray(inv.entries) ? inv.entries.map(migrateEntry) : []
+      }));
+      localStorage.setItem("investments", JSON.stringify(investments));
+      render();
+    }
+    setSyncStatus("Synced.");
+  }catch(e){
+    console.error(e);
+    setSyncStatus("Couldn't sync just now.");
+  }
+}
+
+function scheduleDriveSync(){
+  if(!driveAccessToken) return;
+  clearTimeout(driveSyncTimer);
+  driveSyncTimer = setTimeout(driveSaveNow, 1200);
+}
+
+async function driveSaveNow(){
+  if(!driveAccessToken || driveSyncing) return;
+  driveSyncing = true;
+  setSyncStatus("Syncing...");
+  try{
+    if(!driveFileId){
+      driveFileId = await driveFindFileId();
+    }
+    const body = JSON.stringify(investments);
+    const metadata = { name: DRIVE_FILE_NAME, mimeType: "application/json" };
+    if(!driveFileId){
+      metadata.parents = ["appDataFolder"];
+    }
+    const boundary = "portfolio-boundary";
+    const multipartBody =
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+      JSON.stringify(metadata) +
+      `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n` +
+      body +
+      `\r\n--${boundary}--`;
+
+    const url = driveFileId
+      ? `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=multipart`
+      : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
+
+    const res = await fetch(url, {
+      method: driveFileId ? "PATCH" : "POST",
+      headers: {
+        Authorization: "Bearer " + driveAccessToken,
+        "Content-Type": `multipart/related; boundary=${boundary}`
+      },
+      body: multipartBody
+    });
+    if(!res.ok) throw new Error("Drive save failed: " + res.status);
+    const data = await res.json();
+    driveFileId = data.id || driveFileId;
+    setSyncStatus("Synced just now.");
+  }catch(e){
+    console.error(e);
+    setSyncStatus("Couldn't sync just now.");
+  }finally{
+    driveSyncing = false;
+  }
+}
+
+function render(){
+  const totalInvested = investments.reduce((s,i)=>s+i.invested,0);
+  const totalEarned = investments.reduce((s,i)=>s+totalEarnedFor(i),0);
+  const thisMonthTotal = investments.reduce((s,i)=>s+thisMonthReturnFor(i),0);
+  const months = distinctMonths();
+  const returnPct = totalInvested > 0 ? (totalEarned/totalInvested*100) : 0;
+
+  const heroEarned = document.getElementById("heroEarned");
+  heroEarned.textContent = fmt(totalEarned);
+  heroEarned.className = "earned" + (totalEarned < 0 ? " negative" : "");
+  document.getElementById("heroInvested").textContent = fmt(totalInvested);
+  document.getElementById("heroMonths").textContent =
+    months === 1 ? "1 month tracked" : `${months} months tracked`;
+
+  const stm = document.getElementById("statThisMonth");
+  stm.textContent = (thisMonthTotal>=0?"+":"") + fmt(thisMonthTotal);
+  stm.className = "val " + (thisMonthTotal >= 0 ? "pos" : "neg");
+
+  const str = document.getElementById("statTotalReturn");
+  str.textContent = (returnPct>=0?"+":"") + returnPct.toFixed(1) + "%";
+  str.className = "val " + (returnPct >= 0 ? "pos" : "neg");
+
+  document.getElementById("statMonths").textContent = months;
+
+  const list = document.getElementById("holdingsList");
+  if(investments.length === 0){
+    list.innerHTML = `<div class="empty">No investments yet. Add your first one to start tracking.</div>`;
+    return;
+  }
+  list.innerHTML = investments.map((inv, idx) => {
+    const earned = totalEarnedFor(inv);
+    const tm = thisMonthReturnFor(inv);
+    const last = lastLoggedEntry(inv);
+    const lastMonth = last ? monthLabel(last.month) : "—";
+    return `
+      <div class="holding">
+        <div class="holding-top">
+          <div>
+            <div class="holding-name">Investment ${idx+1} — ${escapeHtml(inv.name)}</div>
+            <div class="holding-meta">Last logged: ${lastMonth} · ${inv.entries.length} ${inv.entries.length===1?"entry":"entries"}</div>
+          </div>
+          <div class="holding-value">
+            <div class="cv">${fmt(earned)}</div>
+            <div class="inv">invested ${fmt(inv.invested)}</div>
+          </div>
+        </div>
+        <div class="holding-rows">
+          <div class="cell">
+            <div class="n ${tm>=0?'pos':'neg'}">${tm>=0?'+':''}${fmt(tm)}</div>
+            <div class="l">This month's return</div>
+          </div>
+          <div class="cell">
+            <div class="n ${earned>=0?'pos':'neg'}">${earned>=0?'+':''}${fmt(earned)}</div>
+            <div class="l">Total returns earned</div>
+          </div>
+        </div>
+        <div class="holding-actions">
+          <button class="log-btn" onclick="openLogModal('${inv.id}')">+ Add this month's return</button>
+        </div>
+        <div class="holding-actions" style="margin-top:8px;">
+          <button class="mini-btn" onclick="openTopUpModal('${inv.id}')">Add more to invested amount</button>
+          <button class="mini-btn danger" onclick="removeInvestment('${inv.id}')">Remove</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function openAddModal(){
+  document.getElementById("newName").value = "";
+  document.getElementById("newInvested").value = "";
+  document.getElementById("newValue").value = "";
+  document.getElementById("addOverlay").classList.add("open");
+}
+function closeModal(id){
+  document.getElementById(id).classList.remove("open");
+}
+
+async function submitAdd(){
+  const name = document.getElementById("newName").value.trim();
+  const invested = parseFloat(document.getElementById("newInvested").value);
+  const firstReturn = parseFloat(document.getElementById("newValue").value);
+  if(!name || isNaN(invested) || invested < 0){
+    alert("Please enter a name and a valid amount invested.");
+    return;
+  }
+  const now = new Date();
+  const entries = !isNaN(firstReturn) ? [{month: monthKey(now), payments: [{amount: firstReturn}]}] : [];
+  investments.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    name,
+    invested,
+    entries
+  });
+  saveData();
+  closeModal("addOverlay");
+  render();
+}
+
+function recentMonthKeys(count){
+  const keys = [];
+  const now = new Date();
+  for(let i=0;i<count;i++){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    keys.push(monthKey(d));
+  }
+  return keys;
+}
+
+function populateMonthSelect(){
+  const sel = document.getElementById("logMonth");
+  const keys = recentMonthKeys(24);
+  sel.innerHTML = keys.map(k => `<option value="${k}">${monthLabel(k)}</option>`).join("");
+  sel.value = monthKey(new Date());
+}
+
+function selectedLogMonth(){
+  return document.getElementById("logMonth").value;
+}
+
+function renderPaymentList(){
+  const inv = investments.find(i=>i.id===logTargetId);
+  const mKey = selectedLogMonth();
+  const entry = inv.entries.find(e=>e.month===mKey);
+  const payments = entry ? entry.payments : [];
+  const listEl = document.getElementById("paymentList");
+  if(payments.length === 0){
+    listEl.innerHTML = `<div class="hint" style="margin:6px 0 0;">No payments logged yet for ${monthLabel(mKey)}.</div>`;
+    return;
+  }
+  const rows = payments.map((p, i) => `
+    <div class="prow">
+      <span class="pval">Payment ${i+1} — ${fmt(p.amount)}</span>
+      <button class="pdel" onclick="deletePayment(${i})">remove</button>
+    </div>
+  `).join("");
+  const total = payments.reduce((s,p)=>s+p.amount,0);
+  listEl.innerHTML = rows + `
+    <div class="payment-total">
+      <span>${monthLabel(mKey)} total</span>
+      <span>${fmt(total)}</span>
+    </div>
+  `;
+}
+
+function openLogModal(id){
+  logTargetId = id;
+  const inv = investments.find(i=>i.id===id);
+  document.getElementById("logTitle").textContent = `Add a return — ${inv.name}`;
+  document.getElementById("logValue").value = "";
+  populateMonthSelect();
+  renderPaymentList();
+  document.getElementById("logOverlay").classList.add("open");
+  document.getElementById("logValue").focus();
+}
+
+function submitLog(){
+  const value = parseFloat(document.getElementById("logValue").value);
+  if(isNaN(value)){
+    alert("Please enter a valid amount.");
+    return;
+  }
+  const inv = investments.find(i=>i.id===logTargetId);
+  const mKey = selectedLogMonth();
+  const entry = getOrCreateMonthEntry(inv, mKey);
+  entry.payments.push({amount: value});
+  inv.entries.sort((a,b)=>a.month.localeCompare(b.month));
+  saveData();
+  document.getElementById("logValue").value = "";
+  document.getElementById("logValue").focus();
+  renderPaymentList();
+  render();
+}
+
+function deletePayment(index){
+  const inv = investments.find(i=>i.id===logTargetId);
+  const mKey = selectedLogMonth();
+  const entry = inv.entries.find(e=>e.month===mKey);
+  if(!entry) return;
+  entry.payments.splice(index, 1);
+  if(entry.payments.length === 0){
+    inv.entries = inv.entries.filter(e=>e!==entry);
+  }
+  saveData();
+  renderPaymentList();
+  render();
+}
+
+let topUpTargetId = null;
+function openTopUpModal(id){
+  topUpTargetId = id;
+  const inv = investments.find(i=>i.id===id);
+  document.getElementById("topUpTitle").textContent = `Add more to invested amount — ${inv.name}`;
+  document.getElementById("topUpValue").value = "";
+  document.getElementById("topUpOverlay").classList.add("open");
+  document.getElementById("topUpValue").focus();
+}
+
+function submitTopUp(){
+  const value = parseFloat(document.getElementById("topUpValue").value);
+  if(isNaN(value) || value <= 0){
+    alert("Please enter a valid amount.");
+    return;
+  }
+  const inv = investments.find(i=>i.id===topUpTargetId);
+  inv.invested += value;
+  saveData();
+  closeModal("topUpOverlay");
+  render();
+}
+
+async function removeInvestment(id){
+  if(!confirm("Remove this investment from your tracker?")) return;
+  investments = investments.filter(i=>i.id!==id);
+  saveData();
+  render();
+}
+
+document.getElementById("todayLabel").textContent = new Date().toLocaleDateString(undefined, {weekday:"long", year:"numeric", month:"long", day:"numeric"});
+
+loadData();
+
+if(!isDriveConfigured()){
+  updateSyncButton(false);
+  setSyncStatus("");
+  document.getElementById("syncBtn").style.display = "none";
+}else{
+  // google's script loads async, so poll briefly until it's ready
+  let tries = 0;
+  const tryInit = () => {
+    tries++;
+    if(typeof google !== "undefined" && google.accounts){
+      initGoogleAuth();
+    }else if(tries < 40){
+      setTimeout(tryInit, 250);
+    }
+  };
+  tryInit();
+}
+</script>
+</body>
+</html>
